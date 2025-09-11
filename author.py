@@ -1,11 +1,11 @@
 #
 # author.py -data <data-dir> [-test]
 #
-
+import re
 import argparse
 import data
 
-
+ 
 #
 # YOU MUST WRITE THESE TWO FUNCTIONS (train and test)
 #
@@ -28,8 +28,42 @@ def test(passages):
     return []
 
 
+def split_into_sentences(text):
 
+# used regex to to strip new lines, just googled this and it came up in the google AI
+    text = text.replace("--**--**--", "")
 
+    text = re.sub(r'\s+', ' ', text).strip()
+
+    # asked gemini how to handle the abbrevations in the text so they could be protected and it gave back the list of stuff we would protect and then added a period back in after it if these abbreviations were found.
+    abbreviations = [
+        'Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.', 'Rev.', 'Capt.', 'Sgt.', 'Gen.', 
+        'Sen.', 'Rep.', 'St.', 'Jr.', 'Sr.', 'e.g.', 'i.e.', 'etc.'
+    ]
+    
+    placeholder_text = text
+    for abb in abbreviations:
+        placeholder_text = placeholder_text.replace(abb, abb[:-1] + '<PERIOD>')
+
+    sentences = re.split(r'(?<=[.!?])\s+', placeholder_text)
+# used this stack overflow on how to use regex to split sentences with punctuation (https://stackoverflow.com/questions/72872978/split-text-into-sentences-wit0hout-nltk)
+# gemini helped to put together the abbreviated words
+    final_sentences = []
+    for sentence in sentences:
+        # Change the placeholder back to a period and strip any extra whitespace.
+        restored_sentence = sentence.replace('<PERIOD>', '.').strip()
+        # Ensure we don't add empty strings to our list.
+        if restored_sentence:
+            final_sentences.append(restored_sentence)
+            
+    return final_sentences
+
+def split_into_words(sentences):
+    # keep and split underscores, commas, periods, semi-colons
+    # https://stackoverflow.com/questions/367155/splitting-a-string-into-words-and-punctuation
+    for sentence in sentences:
+        for word in sentence:
+            re.findall(r"[\w']+|[.,!?;]", sentence)
 #
 # DO NOT CHANGE ANYTHING BELOW THIS LINE.
 #
