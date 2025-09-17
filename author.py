@@ -31,7 +31,8 @@ class Author_Classifier():
         # used gemini to find how to access the for author, passage in passages.
 
         for author, passage in passages:
-            passage_words = passage.split()
+            passage_words = split_into_sentences(passage)
+
             passage_words.append(self.STOP)
             passage_words = [self.START] + passage_words
 
@@ -73,18 +74,17 @@ class Author_Classifier():
         return (bigram_count + k) / (unigram + (self.V * k))
 
 
-author_models = dict()
+author_models = list()
+author_passages = dict()
 
 #calling this function for the testing from Chambers
 def train(passages):
-    author_passages = dict()
     for author, passage in passages:
-        author_passages[author].append(passage)
+        author_models.append(author)
+    for author in author_models:
+        x = Author_Classifier()
+        model = x.train(passages)
 
-    for author, passages in author_passages.items():
-        model = Author_Classifier()
-        model.train(passages)
-        author_models[author] = model
 
 def test(passages):
     '''
@@ -156,3 +156,4 @@ if __name__ == '__main__':
     # EVALUATE
     accuracy = data.evaluate(predicted_labels, testset)
     print('Final Accuracy: %.2f%%\n\n' % (accuracy))
+
