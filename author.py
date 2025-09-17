@@ -31,31 +31,60 @@ class Author_Classifier():
         # used gemini to find how to access the for author, passage in passages.
 
         for author, passage in passages:
-            passage = passage.copy()
-            passage.append(self.STOP)
-            passage = ['<s>'] + passage
+            passage_words = passage.split()
+            passage_words.append(self.STOP)
+            passage_words = [self.START] + passage_words
 
-            for w in passage:
+            for w in passage_words:
                 if not w in self.wordcounts:
                     self.wordcounts[w] = 1
                 else:
                     self.wordcounts[w] += 1
 
-            for i in range(len(passage)):
-                w1 = passage[i - 1]
-                w2 = passage[i]
+            for i in range(len(passage_words)):
+                w1 = passage_words[i - 1]
+                w2 = passage_words[i]
                 if not (w1, w2) in self.bigramcounts:
                     self.bigramcounts[(w1, w2)] = 1
                 else:
                     self.bigramcounts[(w1, w2)] += 1
-            self.N += len(passage)
-        pass
+            self.N += len(passage_words)
+
+        self.V += len(passage_words)
+
+    def get_word_probability(self, sentence, index):
+        if index == 0:
+            w1 = "<s>"
+        else:
+            w1 = sentence[index - 1]
+
+        if index == len(sentence):
+            w2 = self.STOP
+        else:
+            w2 = sentence[index]
+
+        bigram = (w1, w2)
+
+        unigram = self.wordcounts.get(w1, 0)
+        bigram_count = self.bigram_counts.get(bigram, 0)
+
+        k = 0.0101
+
+        return (bigram_count + k) / (unigram + (self.V * k))
+
+
+author_models = dict()
 
 #calling this function for the testing from Chambers
 def train(passages):
-    x = Author_Classifier()
-    x.train(passages)
+    author_passages = dict()
+    for author, passage in passages:
+        author_passages[author].append(passage)
 
+    for author, passages in author_passages.items():
+        model = Author_Classifier()
+        model.train(passages)
+        author_models[author] = model
 
 def test(passages):
     '''
@@ -63,6 +92,7 @@ def test(passages):
     passages: a List of passage pairs (author,text)
     Returns: a list of author names, the author predictions for each given passage.
     '''
+
     return []
 
 
