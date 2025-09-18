@@ -4,7 +4,7 @@
 import re
 import argparse
 import data
-
+import math
 
 #
 # YOU MUST WRITE THESE TWO FUNCTIONS (train and test)
@@ -23,90 +23,163 @@ class Author_Classifier:
         self.N = 0
         self.V = 0
 
-    def train(self, passages):
+    def train(self, author_text, vocabulary):
         """
-        Given a list of passages and their known authors, train your learning model.
-        passages: a List of passage pairs (author,text)
-        Returns: void
+        Trains a model for one author, replacing rare words with UNK.
         """
-        # used gemini to find how to access the for author, passage in passages.
+        sentences = split_into_sentences(author_text)
+        tokenized_sentences = split_into_words(sentences)
 
-        for author, passage in passages:
-            passage_words = split_into_sentences(passage)
-
-            passage_words.append(self.STOP)
-            passage_words = [self.START] + passage_words
-
-            for w in passage_words:
-                if not w in self.wordcounts:
-                    self.wordcounts[w] = 1
+        for sentence in tokenized_sentences:
+            # Create a new list for our processed tokens
+            processed_tokens = []
+            # Go through each word in the sentence
+            for word in sentence:
+                # If a word is on our "known" list, keep it.
+                if word in vocabulary:
+                    processed_tokens.append(word)
+                # Otherwise, call it an "unknown" word.
                 else:
-                    self.wordcounts[w] += 1
-
-            for i in range(len(passage_words)):
-                w1 = passage_words[i - 1]
-                w2 = passage_words[i]
-                if not (w1, w2) in self.bigramcounts:
-                    self.bigramcounts[(w1, w2)] = 1
+                    processed_tokens.append(self.UNK)
+            
+            tokens = [self.START] + processed_tokens + [self.STOP]
+            
+            # Count the words (unigrams)
+            for word in tokens:
+                if word in self.wordcounts:
+                    self.wordcounts[word] += 1
                 else:
-                    self.bigramcounts[(w1, w2)] += 1
-            self.N += len(passage_words)
+                    self.wordcounts[word] = 1
+            
+            # Count word pairs (bigrams) using a simple for loop
+            for i in range(len(tokens) - 1):
+                w1 = tokens[i]
+                w2 = tokens[i+1]
+                bigram = (w1, w2)
+                if bigram in self.bigramcounts:
+                    self.bigramcounts[bigram] += 1
+                else:
+                    self.bigramcounts[bigram] = 1
+            
+            self.N += len(tokens)
 
-        self.V += len(passage_words)
+        self.V = len(self.wordcounts)
 
-    def get_word_probability(self, sentence, index):
-        if index == 0:
-            w1 = "<s>"
-        else:
-            w1 = sentence[index - 1]
+    def calculate_passage_log_probability(self, passage_text):
+        """
+        Step 3: This function tests the models fairly.
+        """
+        log_prob = 0.0
+        k = 0.1
 
-        if index == len(sentence):
-            w2 = self.STOP
-        else:
-            w2 = sentence[index]
+        sentences = split_into_sentences(passage_text)
+        tokenized_sentences = split_into_words(sentences)
 
-        bigram = (w1, w2)
+        for sentence in tokenized_sentences:
+            # Also replace unknown words in the test passage with UNK
+            processed_tokens = []
+            for word in sentence:
+                if word in VOCABULARY:
+                    processed_tokens.append(word)
+                else:
+                    processed_tokens.append(self.UNK)
+            
+            tokens = [self.START] + processed_tokens + [self.STOP]
+            
+            # Loop through word pairs to calculate probability
+            for i in range(len(tokens) - 1):
+                w1 = tokens[i]
+                w2 = tokens[i+1]
+                bigram = (w1, w2)
 
-        unigram = self.wordcounts.get(w1, 0)
-        bigram_count = self.bigram_counts.get(bigram, 0)
+                # Get the count of the pair, or 0 if we've never seen it
+                if bigram in self.bigramcounts:
+                    bigram_count = self.bigramcounts[bigram]
+                else:
+                    bigram_count = 0
+                
+                # Get the count of the first word, or 0 if we've never seen it
+                if w1 in self.wordcounts:
+                    unigram_count = self.wordcounts[w1]
+                else:
+                    unigram_count = 0
+                
+                prob = (bigram_count + k) / (unigram_count + (self.V * k))
+                log_prob += math.log2(prob)
+        
+        return log_prob
 
-        k = 0.0101
+VOCABULARY = set()
+AUTHOR_MODELS = dict()
 
-        return (bigram_count + k) / (unigram + (self.V * k))
-
-
-author_models = dict()
-author_passages = dict()
-
-
-# calling this function for the testing from Chambers
 def train(passages):
     """
-    Orchestrates the training process by creating a separate model for each author.
+    This function trains a model for each author.
     """
+    global VOCABULARY
     print("Training models for each author...")
-    # Step 1: Group all passages by their author
+    
+    # --- Step 1: Make a "Known Words" List ---
     author_texts = {}
+    overall_word_counts = {}
     for author, passage in passages:
         if author not in author_texts:
             author_texts[author] = ""
         author_texts[author] += passage + " "
+    
+    # Count every word from every book to find the common ones
+    for author, full_text in author_texts.items():
+        sentences = split_into_sentences(full_text)
+        tokenized_sentences = split_into_words(sentences)
+        for sentence in tokenized_sentences:
+            for word in sentence:
+                # This is a beginner-friendly way to count words
+                if word in overall_word_counts:
+                    overall_word_counts[word] += 1
+                else:
+                    overall_word_counts[word] = 1
 
-    # Step 2: Train a separate classifier for each author
+    # Using a simple for loop to build our list of known words
+    # A word is "known" if we've seen it more than once.
+    for word, count in overall_word_counts.items():
+        if count > 1:
+            VOCABULARY.add(word)
+    
+    VOCABULARY.add("<S>")
+    VOCABULARY.add("</S>")
+    VOCABULARY.add("UNK")
+
+    # --- Step 2: Train each model using the new UNK placeholder ---
     for author, full_text in author_texts.items():
         classifier = Author_Classifier()
-        classifier.train(full_text)
-        author_models[author] = classifier
+        classifier.train(full_text, VOCABULARY)
+        AUTHOR_MODELS[author] = classifier
         print(f"  - Model for '{author}' trained.")
 
 def test(passages):
     """
-    Given a list of passages, predict the author for each one.
-    passages: a List of passage pairs (author,text)
-    Returns: a list of author names, the author predictions for each given passage.
+    Given a list of passages, predict the author for each one using log probabilities.
     """
+    print("Predicting authors for test passages...")
+    predictions = []
 
-    return []
+    for true_author, passage_text in passages:
+        best_author = None
+        # Initialize to negative infinity to correctly find the maximum log probability
+        max_log_prob = -float('inf')
+
+        for author_name, model in AUTHOR_MODELS.items():
+            # Calculate the log probability for the current model
+            log_prob = model.calculate_passage_log_probability(passage_text)
+            
+            # The highest log probability (least negative number) wins
+            if log_prob > max_log_prob:
+                max_log_prob = log_prob
+                best_author = author_name
+        
+        predictions.append(best_author)
+
+    return predictions
 
 
 def split_into_sentences(text):
@@ -162,6 +235,8 @@ def split_into_words(sentences):
     for sentence in sentences:
         token = re.findall(r"[\w']+|[.,!?;]", sentence)
         token_sentence.append(token)
+    
+    return token_sentence
 
 
 # DO NOT CHANGE ANYTHING BELOW THIS LINE.
