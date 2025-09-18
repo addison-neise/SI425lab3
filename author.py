@@ -60,7 +60,8 @@ class Author_Classifier:
             self.N += len(tokens)
 
         self.V = len(self.wordcounts)
-
+        
+# Using log because of how small the probabilities are
     def calculate_log_probability(self, passage_text):
         log_prob = 0.0
         k = 0.01
@@ -167,7 +168,7 @@ def test(passages):
 
         for author_name, model in AUTHOR_MODELS.items():
             # Calculate the log probability for the current model
-            log_prob = model.calculate_passage_log_probability(passage_text)
+            log_prob = model.calculate_log_probability(passage_text)
             
             # The highest log probability (least negative number) wins
             if log_prob > max_log_prob:
