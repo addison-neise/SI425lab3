@@ -41,26 +41,26 @@ class Author_Classifier:
                 # Otherwise, call it an "unknown" word.
                 else:
                     processed_tokens.append(self.UNK)
-            
+
             tokens = [self.START] + processed_tokens + [self.STOP]
-            
+
             # Count the words (unigrams)
             for word in tokens:
                 if word in self.wordcounts:
                     self.wordcounts[word] += 1
                 else:
                     self.wordcounts[word] = 1
-            
+
             # Count word pairs (bigrams) using a simple for loop
             for i in range(len(tokens) - 1):
                 w1 = tokens[i]
-                w2 = tokens[i+1]
+                w2 = tokens[i + 1]
                 bigram = (w1, w2)
                 if bigram in self.bigramcounts:
                     self.bigramcounts[bigram] += 1
                 else:
                     self.bigramcounts[bigram] = 1
-            
+
             self.N += len(tokens)
 
         self.V = len(self.wordcounts)
@@ -83,13 +83,13 @@ class Author_Classifier:
                     processed_tokens.append(word)
                 else:
                     processed_tokens.append(self.UNK)
-            
+
             tokens = [self.START] + processed_tokens + [self.STOP]
-            
+
             # Loop through word pairs to calculate probability
             for i in range(len(tokens) - 1):
                 w1 = tokens[i]
-                w2 = tokens[i+1]
+                w2 = tokens[i + 1]
                 bigram = (w1, w2)
 
                 # Get the count of the pair, or 0 if we've never seen it
@@ -97,20 +97,22 @@ class Author_Classifier:
                     bigram_count = self.bigramcounts[bigram]
                 else:
                     bigram_count = 0
-                
+
                 # Get the count of the first word, or 0 if we've never seen it
                 if w1 in self.wordcounts:
                     unigram_count = self.wordcounts[w1]
                 else:
                     unigram_count = 0
-                
+
                 prob = (bigram_count + k) / (unigram_count + (self.V * k))
                 log_prob += math.log2(prob)
-        
+
         return log_prob
+
 
 VOCABULARY = set()
 AUTHOR_MODELS = dict()
+
 
 def train(passages):
     """
@@ -118,7 +120,7 @@ def train(passages):
     """
     global VOCABULARY
     print("Training models for each author...")
-    
+
     # --- Step 1: Make a "Known Words" List ---
     author_texts = {}
     overall_word_counts = {}
@@ -126,7 +128,7 @@ def train(passages):
         if author not in author_texts:
             author_texts[author] = ""
         author_texts[author] += passage + " "
-    
+
     # Count every word from every book to find the common ones
     for author, full_text in author_texts.items():
         sentences = split_into_sentences(full_text)
@@ -144,7 +146,7 @@ def train(passages):
     for word, count in overall_word_counts.items():
         if count > 1:
             VOCABULARY.add(word)
-    
+
     VOCABULARY.add("<S>")
     VOCABULARY.add("</S>")
     VOCABULARY.add("UNK")
@@ -156,6 +158,7 @@ def train(passages):
         AUTHOR_MODELS[author] = classifier
         print(f"  - Model for '{author}' trained.")
 
+
 def test(passages):
     """
     Given a list of passages, predict the author for each one using log probabilities.
@@ -166,17 +169,17 @@ def test(passages):
     for true_author, passage_text in passages:
         best_author = None
         # Initialize to negative infinity to correctly find the maximum log probability
-        max_log_prob = -float('inf')
+        max_log_prob = -float("inf")
 
         for author_name, model in AUTHOR_MODELS.items():
             # Calculate the log probability for the current model
             log_prob = model.calculate_passage_log_probability(passage_text)
-            
+
             # The highest log probability (least negative number) wins
             if log_prob > max_log_prob:
                 max_log_prob = log_prob
                 best_author = author_name
-        
+
         predictions.append(best_author)
 
     return predictions
@@ -235,7 +238,7 @@ def split_into_words(sentences):
     for sentence in sentences:
         token = re.findall(r"[\w']+|[.,!?;]", sentence)
         token_sentence.append(token)
-    
+
     return token_sentence
 
 
