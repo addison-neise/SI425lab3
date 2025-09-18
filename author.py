@@ -75,10 +75,6 @@ class Author_Classifier:
         return (bigram_count + k) / (unigram + (self.V * k))
 
 
-author_models = list()
-author_passages = dict()
-
-
 # calling this function for the testing from Chambers
 def train(passages):
     # for author, passage in passages:
