@@ -38,7 +38,7 @@ class Author_Classifier:
             passage_words = [self.START] + passage_words
 
             for w in passage_words:
-                if not w in self.wordcounts:
+                if w not in self.wordcounts:
                     self.wordcounts[w] = 1
                 else:
                     self.wordcounts[w] += 1
@@ -75,10 +75,6 @@ class Author_Classifier:
         return (bigram_count + k) / (unigram + (self.V * k))
 
 
-author_models = list()
-author_passages = dict()
-
-
 # calling this function for the testing from Chambers
 def train(passages):
     """
@@ -89,13 +85,13 @@ def train(passages):
     author_texts = {}
     for author, passage in passages:
         if author not in author_texts:
-            author_texts[author] = ""
-        author_texts[author] += passage + " "
-
+            author_texts[author] = []
+        author_texts[author].append((author, passage))
     # Step 2: Train a separate classifier for each author
-    for author, full_text in author_texts.items():
+    global author_models
+    for author, author_passages in author_texts.items():
         classifier = Author_Classifier()
-        classifier.train(full_text)
+        classifier.train(author_passages)
         author_models[author] = classifier
         print(f"  - Model for '{author}' trained.")
 
