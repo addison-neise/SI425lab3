@@ -75,13 +75,29 @@ class Author_Classifier:
         return (bigram_count + k) / (unigram + (self.V * k))
 
 
+author_models = list()
+author_passages = dict()
+
+
 # calling this function for the testing from Chambers
 def train(passages):
-    # for author, passage in passages:
-    #     author_models.append(author)
-    # for author in author_models:
-    x = Author_Classifier()
-    model = x.train(passages)
+    """
+    Orchestrates the training process by creating a separate model for each author.
+    """
+    print("Training models for each author...")
+    # Step 1: Group all passages by their author
+    author_texts = {}
+    for author, passage in passages:
+        if author not in author_texts:
+            author_texts[author] = ""
+        author_texts[author] += passage + " "
+
+    # Step 2: Train a separate classifier for each author
+    for author, full_text in author_texts.items():
+        classifier = Author_Classifier()
+        classifier.train(full_text)
+        author_models[author] = classifier
+        print(f"  - Model for '{author}' trained.")
 
 
 def test(passages):
@@ -143,12 +159,12 @@ def split_into_sentences(text):
 def split_into_words(sentences):
     # keep and split underscores, commas, periods, semi-colons
     # https://stackoverflow.com/questions/367155/splitting-a-string-into-words-and-punctuation
+    token_sentence = []
     for sentence in sentences:
-        for word in sentence:
-            re.findall(r"[\w']+|[.,!?;]", sentence)
+        token = re.findall(r"[\w']+|[.,!?;]", sentence)
+        token_sentence.append(token)
 
 
-#
 # DO NOT CHANGE ANYTHING BELOW THIS LINE.
 #
 if __name__ == "__main__":
