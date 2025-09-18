@@ -1,6 +1,6 @@
 Fabian France, Addison Neise
 
-1. 
+1. We replaced the --**--**-- break with an empty character, and made sure that we kept abbreviations as they appear (Dr., Mr., Mrs., etc..). All punctation apart from abbreviations were treated as individual tokens. 
 
 2. 79.70%
 
