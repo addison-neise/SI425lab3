@@ -10,11 +10,20 @@ import math
 from warnings import simplefilter
 simplefilter(action='ignore', category=FutureWarning)
 
+from sklearn.linear_model import LogisticRegression
+from sklearn.feature_extraction.text import CountVectorizer
 
 
 #
 # YOU MUST WRITE THESE TWO FUNCTIONS (train and test)
 #
+
+# 17, bigrams = 83.39%
+# 17, .6, bigrams = 
+# 17, .61, bigrams = 84.13
+
+vectorizer = CountVectorizer(analyzer='word', min_df=17, max_df=.60, ngram_range=(1,2))
+clf = LogisticRegression()
 
 def train(passages):
     '''
@@ -22,6 +31,13 @@ def train(passages):
     passages: a List of passage pairs (author,text) 
     Returns: void
     '''
+
+    # used gemini to help with list comprehension for the list of pairs
+    X_train_counts = vectorizer.fit_transform([passage[1] for passage in passages])
+    Y_train = [passage[0] for passage in passages]
+
+    clf.fit(X_train_counts, Y_train)
+
     pass
     
 
@@ -31,7 +47,11 @@ def test(passages):
     passages: a List of passage pairs (author,text)
     Returns: a list of author names, the author predictions for each given passage.
     '''
-    return []
+
+    X_test_counts = vectorizer.transform([passage[1] for passage in passages])
+    guesses = clf.predict(X_test_counts)
+
+    return guesses
 
 
     
@@ -61,3 +81,4 @@ if __name__ == '__main__':
     # EVALUATE
     accuracy = data.evaluate(predicted_labels, testset)
     print('Accuracy: %.2f%%\n' % (accuracy))
+    

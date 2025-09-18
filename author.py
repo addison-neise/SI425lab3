@@ -142,8 +142,7 @@ def train(passages):
     # Using a simple for loop to build our list of known words
     # A word is "known" if we've seen it more than once.
     for word, count in overall_word_counts.items():
-        if count > 5:
-            VOCABULARY.add(word)
+        VOCABULARY.add(word)
 
     VOCABULARY.add("<S>")
     VOCABULARY.add("</S>")
@@ -153,6 +152,8 @@ def train(passages):
         classifier = Author_Classifier()
         classifier.train(full_text, VOCABULARY)
         AUTHOR_MODELS[author] = classifier
+
+    return (VOCABULARY, AUTHOR_MODELS)
 
 
 def test(passages):
