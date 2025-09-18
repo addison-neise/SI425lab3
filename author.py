@@ -99,9 +99,10 @@ def split_into_sentences(text):
 def split_into_words(sentences):
     # keep and split underscores, commas, periods, semi-colons
     # https://stackoverflow.com/questions/367155/splitting-a-string-into-words-and-punctuation
+    token_sentence = []
     for sentence in sentences:
-        for word in sentence:
-            re.findall(r"[\w']+|[.,!?;]", sentence)
+        token = re.findall(r"[\w']+|[.,!?;]", sentence)
+        token_sentence.append(token)
 #
 # DO NOT CHANGE ANYTHING BELOW THIS LINE.
 #
