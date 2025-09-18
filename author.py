@@ -31,27 +31,21 @@ class Author_Classifier:
         tokenized_sentences = split_into_words(sentences)
 
         for sentence in tokenized_sentences:
-            # Create a new list for our processed tokens
             processed_tokens = []
-            # Go through each word in the sentence
             for word in sentence:
-                # If a word is on our "known" list, keep it.
                 if word in vocabulary:
                     processed_tokens.append(word)
-                # Otherwise, call it an "unknown" word.
                 else:
                     processed_tokens.append(self.UNK)
             
             tokens = [self.START] + processed_tokens + [self.STOP]
             
-            # Count the words (unigrams)
             for word in tokens:
                 if word in self.wordcounts:
                     self.wordcounts[word] += 1
                 else:
                     self.wordcounts[word] = 1
             
-            # Count word pairs (bigrams) using a simple for loop
             for i in range(len(tokens) - 1):
                 w1 = tokens[i]
                 w2 = tokens[i+1]
@@ -65,18 +59,15 @@ class Author_Classifier:
 
         self.V = len(self.wordcounts)
 
-    def calculate_passage_log_probability(self, passage_text):
-        """
-        Step 3: This function tests the models fairly.
-        """
+    def calculate_log_probability(self, passage_text):
         log_prob = 0.0
-        k = 0.1
+        k = 0.01
 
         sentences = split_into_sentences(passage_text)
         tokenized_sentences = split_into_words(sentences)
 
         for sentence in tokenized_sentences:
-            # Also replace unknown words in the test passage with UNK
+            # Gemini helped with if statements because we couldn't properly create the complete tokens. We were missing the if/else statement
             processed_tokens = []
             for word in sentence:
                 if word in VOCABULARY:
@@ -86,24 +77,23 @@ class Author_Classifier:
             
             tokens = [self.START] + processed_tokens + [self.STOP]
             
-            # Loop through word pairs to calculate probability
+            # same notation from Fabian's lab
             for i in range(len(tokens) - 1):
                 w1 = tokens[i]
                 w2 = tokens[i+1]
                 bigram = (w1, w2)
 
-                # Get the count of the pair, or 0 if we've never seen it
                 if bigram in self.bigramcounts:
                     bigram_count = self.bigramcounts[bigram]
                 else:
                     bigram_count = 0
                 
-                # Get the count of the first word, or 0 if we've never seen it
                 if w1 in self.wordcounts:
                     unigram_count = self.wordcounts[w1]
                 else:
                     unigram_count = 0
                 
+                # calculate using log as suggested in directions
                 prob = (bigram_count + k) / (unigram_count + (self.V * k))
                 log_prob += math.log2(prob)
         
@@ -116,10 +106,11 @@ def train(passages):
     """
     This function trains a model for each author.
     """
+
+    # couldn't figure out why our vocabulary wasn't working but since we have a class within the file and these functions are outside gemini said to make it a global variable
     global VOCABULARY
-    print("Training models for each author...")
     
-    # --- Step 1: Make a "Known Words" List ---
+    
     author_texts = {}
     overall_word_counts = {}
     for author, passage in passages:
@@ -139,28 +130,28 @@ def train(passages):
                 else:
                     overall_word_counts[word] = 1
 
+
+    # Asked Gemini how to optimize our train and this part of the code it was suggested to add and then increase this vocabulary threshold from 1 to something higher. 
+    # my understanding is that by doing this places words not seen much less than that not as important
     # Using a simple for loop to build our list of known words
     # A word is "known" if we've seen it more than once.
     for word, count in overall_word_counts.items():
-        if count > 1:
+        if count > 5:
             VOCABULARY.add(word)
     
     VOCABULARY.add("<S>")
     VOCABULARY.add("</S>")
     VOCABULARY.add("UNK")
 
-    # --- Step 2: Train each model using the new UNK placeholder ---
     for author, full_text in author_texts.items():
         classifier = Author_Classifier()
         classifier.train(full_text, VOCABULARY)
         AUTHOR_MODELS[author] = classifier
-        print(f"  - Model for '{author}' trained.")
 
 def test(passages):
     """
     Given a list of passages, predict the author for each one using log probabilities.
     """
-    print("Predicting authors for test passages...")
     predictions = []
 
     for true_author, passage_text in passages:
@@ -170,7 +161,7 @@ def test(passages):
 
         for author_name, model in AUTHOR_MODELS.items():
             # Calculate the log probability for the current model
-            log_prob = model.calculate_passage_log_probability(passage_text)
+            log_prob = model.calculate_log_probability(passage_text)
             
             # The highest log probability (least negative number) wins
             if log_prob > max_log_prob:
@@ -233,8 +224,9 @@ def split_into_words(sentences):
     # https://stackoverflow.com/questions/367155/splitting-a-string-into-words-and-punctuation
     token_sentence = []
     for sentence in sentences:
-        token = re.findall(r"[\w']+|[.,!?;]", sentence)
-        token_sentence.append(token)
+        lowered_sentence = sentence.lower()
+        tokens = re.findall(r"[\w'-]+|[.,!?;\"()]", lowered_sentence)
+        token_sentence.append(tokens)
     
     return token_sentence
 
